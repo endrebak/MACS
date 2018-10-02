@@ -1,4 +1,4 @@
-# Time-stamp: <2015-03-05 13:46:31 Tao Liu>
+# Time-stamp: <2018-10-02 12:15:49 Tao Liu>
 
 """Description: Naive call differential peaks from 4 bedGraph tracks for scores.
 
@@ -49,6 +49,8 @@ info    = logging.info
 # Main function
 # ------------------------------------
 def run( options ):
+    ScoreTrack.TestLRfunctions()
+    
     if options.maxgap >= options.minlen:
         error("MAXGAP should be smaller than MINLEN! Your input is MAXGAP = %d and MINLEN = %d" % (options.maxgap, options.minlen))
 

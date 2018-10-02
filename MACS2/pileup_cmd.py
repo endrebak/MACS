@@ -1,4 +1,4 @@
-# Time-stamp: <2015-06-02 23:36:21 Tao Liu>
+# Time-stamp: <2018-07-02 15:00:19 Tao Liu>
 
 """Description: Filter duplicate reads depending on sequencing depth.
 
@@ -44,7 +44,7 @@ def run( o_options ):
     debug = options.debug
     error = options.error
     #0 output arguments
-    assert options.format != 'BAMPE', "Pair-end data with BAMPE option currently doesn't work with pileup command. You can pretend your data to be single-end with -f BAM. Please try again!"
+    #assert options.format != 'BAMPE', "Pair-end data with BAMPE option currently doesn't work with pileup command. You can pretend your data to be single-end with -f BAM. Please try again!"
 
     #0 prepare output file
     outfile = os.path.join( options.outdir, options.outputfile )
@@ -90,3 +90,21 @@ def load_tag_files_options ( options ):
     options.info("tag size is determined as %d bps" % tsize)
     return (tsize, treat)
 
+def load_frag_files_options ( options ):
+    """From the options, load treatment fragments and control fragments (if available).
+
+    # this is for Paired-end data.
+    """
+    options.info("#1 read treatment fragments...")
+    tp = options.parser(options.ifile[0], buffer_size=options.buffer_size)
+    treat = tp.build_petrack()
+    #treat.sort()
+    if len(options.ifile) > 1:
+        # multiple input
+        for tfile in options.ifile[1:]:
+            tp = options.parser(tfile, buffer_size=options.buffer_size)
+            treat = tp.append_petrack( treat )
+            #treat.sort()
+    treat.finalize()
+    options.tsize = tp.d
+    return (tp.tsize, treat)

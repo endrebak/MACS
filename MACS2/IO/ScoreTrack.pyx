@@ -1,4 +1,4 @@
-# Time-stamp: <2016-02-12 00:12:45 Tao Liu>
+# Time-stamp: <2018-10-02 14:53:17 Tao Liu>
 
 """Module for Feature IO classes.
 
@@ -37,8 +37,6 @@ from MACS2.Constants import BYTE4, FBYTE4, array
 from MACS2.Prob import poisson_cdf
 from MACS2.IO.PeakIO import PeakIO, BroadPeakIO, parse_peakname
 
-from MACS2.hashtable import Int64HashTable, Float64HashTable
-
 import logging
 
 # ------------------------------------
@@ -56,7 +54,6 @@ cdef inline int int_min(int a, int b): return a if a <= b else b
 
 LOG10_E = 0.43429448190325176
 
-pscore_khashtable = Int64HashTable()
 pscore_dict = dict()
 
 cdef inline double get_pscore ( int observed, double expectation ):
@@ -75,7 +72,7 @@ cdef inline double get_pscore ( int observed, double expectation ):
         pscore_dict[(observed, expectation)] = score
         return score
 
-asym_logLR_khashtable = Int64HashTable()
+asym_logLR_dict = dict()
 
 cdef inline double logLR_asym ( double x, double y ):
     """Calculate log10 Likelihood between H1 ( enriched ) and H0 (
@@ -86,22 +83,20 @@ cdef inline double logLR_asym ( double x, double y ):
     """
     cdef:
         double s
-        long key_value
-    
-    key_value = hash( (x, y ) )
-    try:
-        return asym_logLR_khashtable.get_item( key_value )
-    except KeyError:
+
+    if asym_logLR_dict.has_key( ( x, y ) ):
+        return asym_logLR_dict[ ( x, y ) ]
+    else:
         if x > y:
             s = (x*(log(x)-log(y))+y-x)*LOG10_E
         elif x < y:
             s = (x*(-log(x)+log(y))-y+x)*LOG10_E
         else:
             s = 0
-        asym_logLR_khashtable.set_item(key_value, s)
+        asym_logLR_dict[ ( x, y ) ] = s
         return s
 
-sym_logLR_khashtable = Int64HashTable()
+sym_logLR_dict = dict()
 
 cdef inline double logLR_sym ( double x, double y ):
     """Calculate log10 Likelihood between H1 ( enriched ) and H0 (
@@ -112,21 +107,18 @@ cdef inline double logLR_sym ( double x, double y ):
     """
     cdef:
         double s
-        long key_value
     
-    key_value = hash( (x, y ) )
-    try:
-        return sym_logLR_khashtable.get_item( key_value )
-    except KeyError:
+    if sym_logLR_dict.has_key( ( x, y ) ):
+        return sym_logLR_dict[ ( x, y ) ]
+    else:
         if x > y:
             s = (x*(log(x)-log(y))+y-x)*LOG10_E
         elif y > x:
             s = (y*(log(x)-log(y))+y-x)*LOG10_E
         else:
             s = 0
-        sym_logLR_khashtable.set_item(key_value, s)
+        sym_logLR_dict[ ( x, y ) ] = s
         return s
-
     
 cdef inline double get_logFE ( float x, float y ):
     """ return 100* log10 fold enrichment with +1 pseudocount.
@@ -173,6 +165,31 @@ cdef float mean_from_value_length ( np.ndarray value, list length ):
 # ------------------------------------
 # Classes
 # ------------------------------------
+
+def TestLRfunctions ():
+    print ("test logLR_asym")
+    for i in range(1000,10000,100):
+        for j in range(1000,10000,100):
+            v = logLR_asym(i, j)
+            print (i,j,v)
+
+    print ("test logLR_sym")            
+    for i in range(1000,10000,100):
+        for j in range(1000,10000,100):
+            v = logLR_sym(i, j)
+            print (i,j,v)
+
+    print ("2nd test logLR_asym")
+    for i in range(1000,10000,100):
+        for j in range(1000,10000,100):
+            v = logLR_asym(i, j)
+            print (i,j,v)
+
+    print ("2nd test logLR_sym")            
+    for i in range(1000,10000,100):
+        for j in range(1000,10000,100):
+            v = logLR_sym(i, j)
+            print (i,j,v)            
 
 class CombinedTwoTrack:
     """ For differential peak calling.
@@ -759,17 +776,18 @@ cdef class scoreTrackII:
 
         # convert pvalue2qvalue to a simple dict based on khash
         # khash has big advantage while checking keys for millions of times.
-        s_p2q = Float64HashTable()
-        for k in pqtable.keys():
-            s_p2q.set_item(k,pqtable[k])
+        #s_p2q = Float64HashTable()
+        #for k in pqtable.keys():
+        #    s_p2q.set_item(k,pqtable[k])
 
-        g = s_p2q.get_item
+        #g = s_p2q.get_item
         
         for chrom in self.data.keys():
             v = self.data[chrom][3]
             l = self.datalength[chrom]
             for i in range(l):
-                v[ i ] =  g( v[ i ])
+                v[ i ] = pqtable[ v[ i ] ]
+                #v [ i ] =  g( v[ i ])
         
         self.scoring_method = 'q'
         return
